@@ -1,261 +1,276 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Planta Fácil</title>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#4CAF50">
-<style>
-body{
-  margin:0;
-  background:#222;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  font-family:Arial;
-  color:white;
-  text-align:center;
-}
-h1{
-  margin:10px;
-  font-size:18px;
-}
-canvas{
-  background:white;
-  border:2px solid black;
-  touch-action:none;
-}
-.controls{
-  margin:10px;
-}
-button{
-  margin:5px;
-  padding:10px 15px;
-  font-size:16px;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
-}
-.repo-list{
-  margin-top:10px;
-  width:90%;
-  max-width:400px;
-  text-align:left;
-}
-.repo-item{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  background:#333;
-  padding:5px 10px;
-  margin-bottom:5px;
-  border-radius:4px;
-}
-.repo-item span{
-  cursor:pointer;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Planta Fácil - Renilson</title>
+    <style>
+        body {
+            margin: 0;
+            background: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            touch-action: none;
+        }
+        h1 { margin: 10px; font-size: 1.2rem; color: #4CAF50; }
+        
+        canvas {
+            background: white;
+            border: 3px solid #4CAF50;
+            border-radius: 8px;
+            cursor: crosshair;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 10px;
+            width: 95%;
+            max-width: 500px;
+        }
+
+        button {
+            padding: 12px 5px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #333;
+            color: white;
+            transition: 0.2s;
+        }
+
+        button:active { transform: scale(0.95); }
+
+        .btn-active { background: #4CAF50 !important; color: white; box-shadow: 0 0 10px #4CAF50; }
+        
+        .btn-danger { background: #d32f2f; }
+        .btn-save { background: #1976D2; }
+
+        .repo-list {
+            margin-top: 15px;
+            width: 90%;
+            max-width: 400px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .repo-item {
+            display: flex;
+            justify-content: space-between;
+            background: #333;
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 6px;
+        }
+    </style>
 </head>
 <body>
 
-<h1>Alisson da Cruz Silva fez esse site para Renilson</h1>
+<h1>Planta Fácil do Renilson</h1>
 
 <canvas id="canvas"></canvas>
 
 <div class="controls">
-  <button onclick="zoomIn()">🔍+</button>
-  <button onclick="zoomOut()">🔍-</button>
-  <button onclick="undoLine()">Apagar última linha</button>
-  <button onclick="download()">Baixar Planta</button>
-  <button onclick="saveRepo()">💾 Salvar Repositório</button>
-  <button onclick="newRepo()">🆕 Novo Repositório</button>
+    <button id="modeWall" class="btn-active" onclick="setMode('wall')">🧱 PAREDE</button>
+    <button id="modeText" onclick="setMode('text')">🏷️ NOME/MEDIDA</button>
+    <button class="btn-danger" onclick="undoLine()">↩️ DESFAZER</button>
+    
+    <button onclick="zoomIn()">🔍 +</button>
+    <button onclick="zoomOut()">🔍 -</button>
+    <button onclick="newRepo()">🆕 LIMPAR</button>
+    
+    <button class="btn-save" onclick="saveRepo()">💾 SALVAR</button>
+    <button class="btn-save" onclick="download()">🖼️ BAIXAR FOTO</button>
 </div>
 
 <div class="repo-list" id="repoList"></div>
 
 <script>
-const canvas=document.getElementById("canvas");
-const ctx=canvas.getContext("2d");
-const grid=40;
-let zoom=1;
-let offsetX=0;
-let offsetY=0;
-let lines=[];
-let texts=[];
-let startX,startY,moved=false;
-let holdTimer=null;
-let draggingText=null;
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const grid = 30; // Tamanho do quadradinho
 
-// Redimensiona canvas
-function resizeCanvas(){
-  canvas.width=window.innerWidth*0.95;
-  canvas.height=window.innerHeight*0.75;
-  redraw();
+let zoom = 1;
+let offsetX = 0;
+let offsetY = 0;
+let lines = [];
+let texts = [];
+let mode = 'wall'; // 'wall' ou 'text'
+
+let isDrawing = false;
+let startX, startY, curX, curY;
+
+function setMode(m) {
+    mode = m;
+    document.getElementById('modeWall').className = (m === 'wall' ? 'btn-active' : '');
+    document.getElementById('modeText').className = (m === 'text' ? 'btn-active' : '');
 }
-window.addEventListener("resize",resizeCanvas);
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth * 0.95;
+    canvas.height = window.innerHeight * 0.60;
+    redraw();
+}
+window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
-// Zoom
-function zoomIn(){ zoom+=0.2; redraw(); }
-function zoomOut(){ zoom=Math.max(0.4, zoom-0.2); redraw(); }
+function zoomIn() { zoom += 0.1; redraw(); }
+function zoomOut() { zoom = Math.max(0.5, zoom - 0.1); redraw(); }
 
-// Grid e desenho
-function drawGrid(){
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.fillStyle="white"; ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.setTransform(zoom,0,0,zoom,offsetX,offsetY);
-  for(let x=0;x<2000;x+=grid){
-    ctx.beginPath();
-    ctx.strokeStyle=(x%(grid*5)==0)?"#666":"#999";
-    ctx.lineWidth=(x%(grid*5)==0)?2:1.4;
-    ctx.moveTo(x,0); ctx.lineTo(x,2000); ctx.stroke();
-  }
-  for(let y=0;y<2000;y+=grid){
-    ctx.beginPath();
-    ctx.strokeStyle=(y%(grid*5)==0)?"#666":"#999";
-    ctx.lineWidth=(y%(grid*5)==0)?2:1.4;
-    ctx.moveTo(0,y); ctx.lineTo(2000,y); ctx.stroke();
-  }
-}
+function redraw() {
+    // Limpa tudo
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.fillStyle = "white";
+    ctx.fillRect(0,0,canvas.width, canvas.height);
 
-function redraw(){
-  drawGrid();
-  ctx.strokeStyle="#111";
-  ctx.lineWidth=6;
-  lines.forEach(line=>{
+    // Aplica Zoom e Pan
+    ctx.setTransform(zoom, 0, 0, zoom, offsetX, offsetY);
+
+    // Desenha Grid
     ctx.beginPath();
-    ctx.moveTo(line.x1,line.y1);
-    ctx.lineTo(line.x2,line.y2);
+    ctx.strokeStyle = "#e0e0e0";
+    ctx.lineWidth = 1;
+    for(let x=0; x<2000; x+=grid) { ctx.moveTo(x,0); ctx.lineTo(x,2000); }
+    for(let y=0; y<2000; y+=grid) { ctx.moveTo(0,y); ctx.lineTo(2000,y); }
     ctx.stroke();
-  });
-  texts.forEach(t=>{
-    ctx.fillStyle="red";
-    ctx.font="18px Arial";
-    ctx.fillText(t.text,t.x,t.y);
-  });
+
+    // Desenha Paredes Salvas
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 5;
+    lines.forEach(l => {
+        ctx.beginPath();
+        ctx.moveTo(l.x1, l.y1);
+        ctx.lineTo(l.x2, l.y2);
+        ctx.stroke();
+    });
+
+    // Desenha Textos
+    ctx.fillStyle = "#d32f2f";
+    ctx.font = "bold 14px Arial";
+    texts.forEach(t => {
+        ctx.fillText(t.text, t.x, t.y);
+    });
+
+    // Desenha Linha Guia (enquanto arrasta)
+    if(isDrawing && mode === 'wall') {
+        ctx.strokeStyle = "rgba(76, 175, 80, 0.5)";
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(curX, curY);
+        ctx.stroke();
+    }
 }
 
-// Mouse events
-function getMousePos(e){
-  const rect=canvas.getBoundingClientRect();
-  return {x:(e.clientX-rect.left-offsetX)/zoom, y:(e.clientY-rect.top-offsetY)/zoom};
+function getMousePos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+        x: (clientX - rect.left - offsetX) / zoom,
+        y: (clientY - rect.top - offsetY) / zoom
+    };
 }
 
-canvas.addEventListener("pointerdown",(e)=>{
-  let pos=getMousePos(e);
-  let x=pos.x, y=pos.y;
-  let text=findText(x,y);
-  if(text){
-    holdTimer=setTimeout(()=>{ draggingText=text; },500);
-    return;
-  }
-  startX=Math.round(x/grid)*grid;
-  startY=Math.round(y/grid)*grid;
-  moved=false;
-  holdTimer=setTimeout(()=>{
-    let value=prompt("Digite medida ou nome (Ex: 3.50m, Sala)");
-    if(value){ texts.push({text:value,x:x,y:y}); redraw(); }
-  },1000);
+canvas.addEventListener("pointerdown", (e) => {
+    const pos = getMousePos(e);
+    // Arredonda para o grid mais próximo
+    startX = Math.round(pos.x / grid) * grid;
+    startY = Math.round(pos.y / grid) * grid;
+    
+    if(mode === 'text') {
+        const val = prompt("O que deseja escrever? (Ex: Sala, 3m, Cozinha)");
+        if(val) {
+            texts.push({text: val, x: pos.x, y: pos.y});
+            redraw();
+        }
+    } else {
+        isDrawing = true;
+        curX = startX;
+        curY = startY;
+    }
 });
 
-canvas.addEventListener("pointermove",(e)=>{
-  let pos=getMousePos(e);
-  if(draggingText){ draggingText.x=pos.x; draggingText.y=pos.y; redraw(); return; }
-  moved=true; clearTimeout(holdTimer);
-});
-
-canvas.addEventListener("pointerup",(e)=>{
-  clearTimeout(holdTimer);
-  if(draggingText){ draggingText=null; return; }
-  if(!moved) return;
-  let pos=getMousePos(e);
-  let endX=Math.round(pos.x/grid)*grid;
-  let endY=Math.round(pos.y/grid)*grid;
-  lines.push({x1:startX,y1:startY,x2:endX,y2:endY});
-  redraw();
-});
-
-function findText(x,y){
-  for(let t of texts){
-    let width=ctx.measureText(t.text).width;
-    let height=20;
-    if(x>t.x && x<t.x+width && y<t.y && y>t.y-height) return t;
-  }
-  return null;
-}
-
-function undoLine(){ lines.pop(); redraw(); }
-function download(){
-  const link=document.createElement("a");
-  link.download="planta.png";
-  link.href=canvas.toDataURL("image/png");
-  link.click();
-}
-
-// ====== Sistema de Repositórios ======
-function saveRepo(){
-  let name=prompt("Digite o nome do repositório:");
-  if(!name) return;
-  let repo={lines:lines,texts:texts};
-  let saved=JSON.parse(localStorage.getItem("repos"))||{};
-  saved[name]=repo;
-  localStorage.setItem("repos",JSON.stringify(saved));
-  alert("Repositório salvo!");
-  renderRepos();
-}
-
-function newRepo(){
-  if(confirm("Tem certeza que quer criar um novo repositório? O atual será limpo.")){
-    lines=[]; texts=[];
+canvas.addEventListener("pointermove", (e) => {
+    if(!isDrawing) return;
+    const pos = getMousePos(e);
+    curX = Math.round(pos.x / grid) * grid;
+    curY = Math.round(pos.y / grid) * grid;
     redraw();
-  }
+});
+
+canvas.addEventListener("pointerup", () => {
+    if(isDrawing && mode === 'wall') {
+        if(startX !== curX || startY !== curY) {
+            lines.push({x1: startX, y1: startY, x2: curX, y2: curY});
+        }
+    }
+    isDrawing = false;
+    redraw();
+});
+
+function undoLine() { 
+    if(mode === 'wall') lines.pop(); 
+    else texts.pop();
+    redraw(); 
 }
 
-function deleteRepo(name){
-  let saved=JSON.parse(localStorage.getItem("repos"))||{};
-  if(saved[name]){
-    delete saved[name];
-    localStorage.setItem("repos",JSON.stringify(saved));
+function download() {
+    const link = document.createElement("a");
+    link.download = "planta-renilson.png";
+    link.href = canvas.toDataURL();
+    link.click();
+}
+
+function saveRepo() {
+    let name = prompt("Dê um nome para esta planta:");
+    if(!name) return;
+    let saved = JSON.parse(localStorage.getItem("plantas_pai")) || {};
+    saved[name] = {lines, texts};
+    localStorage.setItem("plantas_pai", JSON.stringify(saved));
     renderRepos();
-  }
 }
 
-function renderRepos(){
-  const list=document.getElementById("repoList");
-  list.innerHTML="";
-  let saved=JSON.parse(localStorage.getItem("repos"))||{};
-  for(let name in saved){
-    let div=document.createElement("div");
-    div.className="repo-item";
-    let span=document.createElement("span");
-    span.textContent=name;
-    span.onclick=()=>{ loadRepo(name); };
-    let delBtn=document.createElement("button");
-    delBtn.textContent="❌";
-    delBtn.onclick=()=>{ if(confirm(`Deletar "${name}"?`)) deleteRepo(name); };
-    div.appendChild(span);
-    div.appendChild(delBtn);
-    list.appendChild(div);
-  }
+function renderRepos() {
+    const list = document.getElementById("repoList");
+    list.innerHTML = "";
+    let saved = JSON.parse(localStorage.getItem("plantas_pai")) || {};
+    for(let n in saved) {
+        let div = document.createElement("div");
+        div.className = "repo-item";
+        div.innerHTML = `<span onclick="loadRepo('${n}')" style="cursor:pointer">📂 ${n}</span>
+                         <button onclick="deleteRepo('${n}')" style="padding:2px 8px; background:red">X</button>`;
+        list.appendChild(div);
+    }
 }
 
-function loadRepo(name){
-  let saved=JSON.parse(localStorage.getItem("repos"))||{};
-  if(saved[name]){
-    lines=saved[name].lines || [];
-    texts=saved[name].texts || [];
+function loadRepo(n) {
+    let saved = JSON.parse(localStorage.getItem("plantas_pai")) || {};
+    lines = saved[n].lines;
+    texts = saved[n].texts;
     redraw();
-    alert(`Repositório "${name}" carregado!`);
-  }
+}
+
+function deleteRepo(n) {
+    let saved = JSON.parse(localStorage.getItem("plantas_pai")) || {};
+    delete saved[n];
+    localStorage.setItem("plantas_pai", JSON.stringify(saved));
+    renderRepos();
+}
+
+function newRepo() {
+    if(confirm("Limpar tudo e começar do zero?")) {
+        lines = []; texts = []; redraw();
+    }
 }
 
 renderRepos();
 </script>
-
-<script>
-if("serviceWorker" in navigator){ navigator.serviceWorker.register("service-worker.js"); }
-</script>
-
 </body>
 </html>
