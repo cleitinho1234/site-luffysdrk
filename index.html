@@ -76,9 +76,6 @@
         .escondido { display: none; }
         .voto-sucesso { color: #ffd700; font-size: 14px; margin-top: 5px; }
     </style>
-
-    <!-- Importa o script do Socket.io de um CDN confiável para evitar caminhos relativos quebrados -->
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
 
@@ -86,7 +83,6 @@
     <h1>Qual o conteúdo da Live de hoje?</h1>
     <p>Vote na sua opção favorita (Apenas 1 voto por pessoa)!</p>
 
-    <!-- Opções de Voto -->
     <div>
         <button class="btn-opcao" id="btn-opcao1" onclick="votar('opcao1')">Fazer Trial</button>
         <div class="contador">Votos: <span id="votos-opcao1">0</span></div>
@@ -111,7 +107,6 @@
 
     <hr style="border: 1px solid #323238; margin: 30px 0;">
 
-    <!-- Seção de Sugestão -->
     <h3>Tem outra ideia? Sugira aqui:</h3>
     
     <div id="passo-sugestao">
@@ -127,32 +122,40 @@
         <button class="btn-enviar" onclick="enviarSugestao()">Enviar Sugestão</button>
     </div>
 
-    <!-- Botão de Login do Admin -->
     <div id="div-botao-login" style="margin-top: 40px;">
         <button style="background:transparent; color:#555; border:none; cursor:pointer;" onclick="fazerLogin()">Lugar Restrito (Admin)</button>
     </div>
 
-    <!-- Área Restrita -->
     <div id="area-restrita" class="escondido">
         <h2 style="color: #ffd700;">Painel do luffysdrk</h2>
-        <p>Sugestões enviadas pelos fãs (Salvas no Mongo):</p>
+        <p>Sugestões enviadas pelos fãs:</p>
         <div class="secao-admin" id="lista-sugestoes">
-            <p style="color:#888;">Carregando sugestões...</p>
+            <p style="color:#888;">Nenhuma sugestão enviada ainda.</p>
         </div>
-        <button onclick="zerarVotos()" style="margin-top:15px; background:#e67600; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; font-weight:bold; margin-right:10px;">Zerar Votos e Mensagens para Próxima Live</button>
+        <button onclick="zerarTudo()" style="margin-top:15px; background:#e67600; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; font-weight:bold; margin-right:10px;">Zerar Votos e Mensagens para Próxima Live</button>
         <button onclick="deslogar()" style="margin-top:15px; background:#ff4444; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer;">Sair do Painel</button>
     </div>
 </div>
 
 <script>
-    // ⚠️ COLOQUE AQUI A URL COMPLETA DO SEU WEB SERVICE DO RENDER (BACKEND)
-    // Exemplo: "https://minizap-backend.onrender.com"
-    const URL_BACKEND = "https://SEU-BACKEND-AQUI.onrender.com"; 
+    // Inicializa os dados na memória do navegador se não existirem
+    if (!localStorage.getItem('votos_live')) {
+        localStorage.setItem('votos_live', JSON.stringify({ opcao1: 0, opcao2: 0, opcao3: 0, opcao4: 0 }));
+    }
+    if (!localStorage.getItem('sugestoes_live')) {
+        localStorage.setItem('sugestoes_live', JSON.stringify([]));
+    }
 
-    // Conecta apontando diretamente para o endereço do seu backend rodando Socket.io
-    const socket = io(URL_BACKEND);
+    // Carregamento Inicial
+    window.addEventListener('load', () => {
+        verificarSeJaVotou();
+        atualizarTela();
 
-    // Controle Local de Voto Único
+        if(localStorage.getItem('logadoLive') === 'true') {
+            mostrarPainelAdmin();
+        }
+    });
+
     function verificarSeJaVotou() {
         if (localStorage.getItem('jaVotouLive') === 'true') {
             desativarBotoesVoto();
@@ -166,68 +169,39 @@
         document.getElementById('msg-ja-votou').classList.remove('escondido');
     }
 
-    // Atualiza dinamicamente as informações textuais dos contadores na tela
-    function atualizarContadoresNaTela(dados) {
-        document.getElementById('votos-opcao1').innerText = dados.opcao1 || 0;
-        document.getElementById('votos-opcao2').innerText = dados.opcao2 || 0;
-        document.getElementById('votos-opcao3').innerText = dados.opcao3 || 0;
-        document.getElementById('votos-opcao4').innerText = dados.opcao4 || 0;
+    function atualizarTela() {
+        // Atualiza Contadores
+        const votos = JSON.parse(localStorage.getItem('votos_live'));
+        document.getElementById('votos-opcao1').innerText = votos.opcao1;
+        document.getElementById('votos-opcao2').innerText = votos.opcao2;
+        document.getElementById('votos-opcao3').innerText = votos.opcao3;
+        document.getElementById('votos-opcao4').innerText = votos.opcao4;
+
+        // Atualiza Lista de Sugestões no Painel
+        const lista = JSON.parse(localStorage.getItem('sugestoes_live'));
+        let divLista = document.getElementById('lista-sugestoes');
+        divLista.innerHTML = "";
+        
+        if(lista.length === 0) {
+            divLista.innerHTML = '<p style="color:#888;">Nenhuma sugestão enviada ainda.</p>';
+            return;
+        }
+        lista.forEach(item => {
+            divLista.innerHTML = `<p><strong>${item.usuario}:</strong> ${item.texto}</p>` + divLista.innerHTML;
+        });
     }
 
-    // Carregamento Inicial buscando da API Express conectada ao MongoDB
-    window.addEventListener('load', async () => {
-        verificarSeJaVotou();
-        
-        try {
-            const resVotos = await fetch(`${URL_BACKEND}/api/live/votos`);
-            const dadosVotos = await resVotos.json();
-            atualizarContadoresNaTela(dadosVotos);
-        } catch (err) {
-            console.error("Erro ao carregar votos iniciais:", err);
-        }
-
-        if(localStorage.getItem('logadoLive') === 'true') {
-            mostrarPainelAdmin();
-            carregarSugestoesDoBanco();
-        }
-    });
-
-    // Ouvinte em tempo real para mudanças globais nos votos
-    socket.on('atualizarVotosGlobais', (dados) => {
-        atualizarContadoresNaTela(dados);
-    });
-
-    // Ouvinte em tempo real para receber novas sugestões no painel administrativo
-    socket.on('novaSugestaoAdmin', (dados) => {
-        if(localStorage.getItem('logadoLive') === 'true') {
-            adicionarSugestaoNaTela(dados.usuario, dados.texto);
-        }
-    });
-
-    socket.on('limparSugestoesAdmin', () => {
-        document.getElementById('lista-sugestoes').innerHTML = '<p style="color:#888;">Nenhuma sugestão enviada ainda.</p>';
-    });
-
-    // Função para registrar o Voto via requisição HTTP POST para o Backend
-    async function votar(idOpcao) {
+    // Função de Votar
+    function votar(idOpcao) {
         if (localStorage.getItem('jaVotouLive') === 'true') return;
 
-        try {
-            const res = await fetch(`${URL_BACKEND}/api/live/votar`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ opcaoId: idOpcao })
-            });
-
-            if (res.ok) {
-                localStorage.setItem('jaVotouLive', 'true');
-                desativarBotoesVoto();
-            } else {
-                alert("Erro ao computar voto no servidor.");
-            }
-        } catch (error) {
-            console.error("Erro ao votar: ", error);
-        }
+        const votos = JSON.parse(localStorage.getItem('votos_live'));
+        votos[idOpcao] += 1;
+        localStorage.setItem('votos_live', JSON.stringify(votos));
+        
+        localStorage.setItem('jaVotouLive', 'true');
+        desativarBotoesVoto();
+        atualizarTela();
     }
 
     // Fluxo do Menu de Sugestão
@@ -244,75 +218,27 @@
         document.getElementById('passo-nome').classList.remove('escondido');
     }
 
-    async function enviarSugestao() {
+    function enviarSugestao() {
         let nome = document.getElementById('input-nome').value;
         if(nome.trim() === "") {
             alert("Digite seu nome!");
             return;
         }
 
-        try {
-            const res = await fetch(`${URL_BACKEND}/api/live/sugerir`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ usuario: nome, texto: sugestaoTemporaria })
-            });
+        const lista = JSON.parse(localStorage.getItem('sugestoes_live'));
+        lista.push({ usuario: nome, texto: sugestaoTemporaria });
+        localStorage.setItem('sugestoes_live', JSON.stringify(lista));
 
-            if (res.ok) {
-                alert("Obrigado! Sua sugestão foi enviada para o luffysdrk.");
-                document.getElementById('input-sugestao').value = "";
-                document.getElementById('input-nome').value = "";
-                document.getElementById('passo-nome').classList.add('escondido');
-                document.getElementById('passo-sugestao').classList.remove('escondido');
-            } else {
-                alert("Erro ao processar sugestão.");
-            }
-        } catch (error) {
-            console.error("Erro ao enviar sugestão: ", error);
-        }
+        alert("Obrigado! Sua sugestão foi enviada.");
+        document.getElementById('input-sugestao').value = "";
+        document.getElementById('input-nome').value = "";
+        document.getElementById('passo-nome').classList.add('escondido');
+        document.getElementById('passo-sugestao').classList.remove('escondido');
+        
+        atualizarTela();
     }
 
-    // Carrega a lista de sugestões salvas no MongoDB
-    async function carregarSugestoesDoBanco() {
-        try {
-            const res = await fetch(`${URL_BACKEND}/api/live/sugestoes`);
-            const lista = await res.json();
-            let divLista = document.getElementById('lista-sugestoes');
-            divLista.innerHTML = "";
-            
-            if(lista.length === 0) {
-                divLista.innerHTML = '<p style="color:#888;">Nenhuma sugestão enviada ainda.</p>';
-                return;
-            }
-            lista.forEach(item => {
-                adicionarSugestaoNaTela(item.usuario, item.texto);
-            });
-        } catch (err) {
-            console.error("Erro ao carregar lista de sugestões:", err);
-        }
-    }
-
-    function adicionarSugestaoNaTela(usuario, texto) {
-        let divLista = document.getElementById('lista-sugestoes');
-        if(divLista.innerHTML.includes("Nenhuma sugestão enviada")) divLista.innerHTML = "";
-        divLista.innerHTML = `<p><strong>${usuario}:</strong> ${texto}</p>` + divLista.innerHTML;
-    }
-
-    // Função Administrativa para limpar dados no Backend
-    async function zerarVotos() {
-        if(confirm("Tem certeza que quer zerar a votação e limpar as mensagens para começar uma nova live?")) {
-            try {
-                const res = await fetch(`${URL_BACKEND}/api/live/resetar`, { method: 'POST' });
-                if(res.ok) {
-                    alert("Banco de dados da live limpo com sucesso!");
-                }
-            } catch (err) {
-                alert("Erro ao se conectar ao servidor para redefinir.");
-            }
-        }
-    }
-
-    // Login Administrativo local
+    // Admin
     function fazerLogin() {
         let usuarioInput = prompt("Digite seu usuário:");
         let senhaInput = prompt("Digite sua senha:");
@@ -320,7 +246,6 @@
         if(usuarioInput === "luffysdrk" && senhaInput === "deussssssss8") {
             localStorage.setItem('logadoLive', 'true');
             mostrarPainelAdmin();
-            carregarSugestoesDoBanco();
             alert("Bem-vindo ao Painel, luffysdrk!");
         } else {
             alert("Usuário ou senha incorretos!");
@@ -330,12 +255,30 @@
     function mostrarPainelAdmin() {
         document.getElementById('area-restrita').classList.remove('escondido');
         document.getElementById('div-botao-login').classList.add('escondido');
+        atualizarTela();
     }
 
     function deslogar() {
         localStorage.removeItem('logadoLive');
         document.getElementById('area-restrita').classList.add('escondido');
         document.getElementById('div-botao-login').classList.remove('escondido');
+    }
+
+    function zerarTudo() {
+        if(confirm("Deseja zerar os votos e limpar as sugestões?")) {
+            localStorage.setItem('votos_live', JSON.stringify({ opcao1: 0, opcao2: 0, opcao3: 0, opcao4: 0 }));
+            localStorage.setItem('sugestoes_live', JSON.stringify([]));
+            localStorage.removeItem('jaVotouLive');
+            
+            // Reativa botões na tela atual se necessário
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById('btn-opcao' + i).disabled = false;
+            }
+            document.getElementById('msg-ja-votou').classList.add('escondido');
+
+            atualizarTela();
+            alert("Dados limpos com sucesso!");
+        }
     }
 </script>
 
