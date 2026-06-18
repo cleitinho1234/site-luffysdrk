@@ -38,6 +38,7 @@
             border-color: #444;
             color: #888;
             cursor: not-allowed;
+            background: #1a1a1e;
         }
         .contador { font-weight: bold; color: #00e676; margin-top: 5px; }
         input[type="text"] {
@@ -45,11 +46,10 @@
             padding: 10px;
             margin: 10px 0;
             border-radius: 5px;
-            border: none;
-            font-size: 16px;
             background: #121214;
             color: white;
             border: 1px solid #323238;
+            font-size: 16px;
         }
         .btn-enviar {
             background: #00e676;
@@ -59,6 +59,7 @@
             border-radius: 5px;
             cursor: pointer;
             font-weight: bold;
+            font-size: 16px;
         }
         #area-restrita {
             margin-top: 30px;
@@ -74,7 +75,7 @@
             overflow-y: auto;
         }
         .escondido { display: none; }
-        .voto-sucesso { color: #ffd700; font-size: 14px; margin-top: 5px; }
+        .voto-sucesso { color: #ffd700; font-size: 16px; margin-top: 15px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -83,6 +84,7 @@
     <h1>Qual o conteúdo da Live de hoje?</h1>
     <p>Vote na sua opção favorita (Apenas 1 voto por pessoa)!</p>
 
+    <!-- Opções de Voto -->
     <div>
         <button class="btn-opcao" id="btn-opcao1" onclick="votar('opcao1')">Fazer Trial</button>
         <div class="contador">Votos: <span id="votos-opcao1">0</span></div>
@@ -103,42 +105,52 @@
         <div class="contador">Votos: <span id="votos-opcao4">0</span></div>
     </div>
 
-    <div id="msg-ja-votou" class="voto-sucesso escondido">Você já registrou seu voto de hoje! Obrigado.</div>
+    <div id="msg-ja-votou" class="voto-sucesso escondido">Sua opção foi registrada com sucesso!</div>
 
     <hr style="border: 1px solid #323238; margin: 30px 0;">
 
+    <!-- Seção de Sugestão -->
     <h3>Tem outra ideia? Sugira aqui:</h3>
     
     <div id="passo-sugestao">
         <input type="text" id="input-sugestao" placeholder="Ex: Girar fruta e dar pro chat...">
-        <br>
+        <br><br>
         <button class="btn-enviar" onclick="proximoPasso()">Avançar</button>
     </div>
 
     <div id="passo-nome" class="escondido">
         <p>Agora, digite seu nome do TikTok/Roblox:</p>
         <input type="text" id="input-nome" placeholder="Seu nome/Nick...">
-        <br>
+        <br><br>
         <button class="btn-enviar" onclick="enviarSugestao()">Enviar Sugestão</button>
     </div>
 
+    <!-- Botão Secreto de Admin -->
     <div id="div-botao-login" style="margin-top: 40px;">
-        <button style="background:transparent; color:#555; border:none; cursor:pointer;" onclick="fazerLogin()">Lugar Restrito (Admin)</button>
+        <button style="background:transparent; color:#3a3a3c; border:none; cursor:pointer;" onclick="fazerLogin()">Painel Restrito</button>
     </div>
 
+    <!-- Área do Admin -->
     <div id="area-restrita" class="escondido">
-        <h2 style="color: #ffd700;">Painel do luffysdrk</h2>
-        <p>Sugestões enviadas pelos fãs:</p>
-        <div class="secao-admin" id="lista-sugestoes">
-            <p style="color:#888;">Nenhuma sugestão enviada ainda.</p>
-        </div>
-        <button onclick="zerarTudo()" style="margin-top:15px; background:#e67600; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; font-weight:bold; margin-right:10px;">Zerar Votos e Mensagens para Próxima Live</button>
-        <button onclick="deslogar()" style="margin-top:15px; background:#ff4444; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer;">Sair do Painel</button>
+        <h2 style="color: #ffd700;">Painel de Controle</h2>
+        <p>Sugestões dos Fãs:</p>
+        <div class="secao-admin" id="lista-sugestoes"></div>
+        <br>
+        <button onclick="zerarTudo()" style="background:#e67600; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer; font-weight:bold; margin-right:10px;">Resetar Votos para Nova Live</button>
+        <button onclick="deslogar()" style="background:#ff4444; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;">Sair</button>
     </div>
 </div>
 
 <script>
-    // Inicializa os dados na memória do navegador se não existirem
+    // Correção automática de dados antigos travados
+    try {
+        const teste = localStorage.getItem('votos_live');
+        if (teste && (!teste.includes('opcao1') || teste.includes('undefined'))) {
+            localStorage.clear();
+        }
+    } catch(e) { localStorage.clear(); }
+
+    // Garante que a memória está pronta
     if (!localStorage.getItem('votos_live')) {
         localStorage.setItem('votos_live', JSON.stringify({ opcao1: 0, opcao2: 0, opcao3: 0, opcao4: 0 }));
     }
@@ -146,90 +158,83 @@
         localStorage.setItem('sugestoes_live', JSON.stringify([]));
     }
 
-    // Carregamento Inicial
+    // Carrega tudo ao abrir a página
     window.addEventListener('load', () => {
-        verificarSeJaVotou();
         atualizarTela();
-
-        if(localStorage.getItem('logadoLive') === 'true') {
+        if (localStorage.getItem('logadoLive') === 'true') {
             mostrarPainelAdmin();
         }
     });
 
-    function verificarSeJaVotou() {
-        if (localStorage.getItem('jaVotouLive') === 'true') {
-            desativarBotoesVoto();
-        }
-    }
-
-    function desativarBotoesVoto() {
-        for (let i = 1; i <= 4; i++) {
-            document.getElementById('btn-opcao' + i).disabled = true;
-        }
-        document.getElementById('msg-ja-votou').classList.remove('escondido');
-    }
-
     function atualizarTela() {
-        // Atualiza Contadores
         const votos = JSON.parse(localStorage.getItem('votos_live'));
-        document.getElementById('votos-opcao1').innerText = votos.opcao1;
-        document.getElementById('votos-opcao2').innerText = votos.opcao2;
-        document.getElementById('votos-opcao3').innerText = votos.opcao3;
-        document.getElementById('votos-opcao4').innerText = votos.opcao4;
+        
+        // Atualiza os números da tela
+        document.getElementById('votos-opcao1').innerText = votos.opcao1 || 0;
+        document.getElementById('votos-opcao2').innerText = votos.opcao2 || 0;
+        document.getElementById('votos-opcao3').innerText = votos.opcao3 || 0;
+        document.getElementById('votos-opcao4').innerText = votos.opcao4 || 0;
 
-        // Atualiza Lista de Sugestões no Painel
+        // Se a pessoa já votou, bloqueia os botões para ela
+        if (localStorage.getItem('jaVotouLive') === 'true') {
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById('btn-opcao' + i).disabled = true;
+            }
+            document.getElementById('msg-ja-votou').classList.remove('escondido');
+        } else {
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById('btn-opcao' + i).disabled = false;
+            }
+            document.getElementById('msg-ja-votou').classList.add('escondido');
+        }
+
+        // Atualiza as mensagens recebidas no painel
         const lista = JSON.parse(localStorage.getItem('sugestoes_live'));
         let divLista = document.getElementById('lista-sugestoes');
         divLista.innerHTML = "";
         
-        if(lista.length === 0) {
+        if (!lista || lista.length === 0) {
             divLista.innerHTML = '<p style="color:#888;">Nenhuma sugestão enviada ainda.</p>';
             return;
         }
         lista.forEach(item => {
-            divLista.innerHTML = `<p><strong>${item.usuario}:</strong> ${item.texto}</p>` + divLista.innerHTML;
+            divLista.innerHTML = `<p style="border-bottom: 1px solid #29292e; padding-bottom: 5px;"><strong>${item.usuario}:</strong> ${item.texto}</p>` + divLista.innerHTML;
         });
     }
 
-    // Função de Votar
+    // Função para computar voto
     function votar(idOpcao) {
         if (localStorage.getItem('jaVotouLive') === 'true') return;
 
         const votos = JSON.parse(localStorage.getItem('votos_live'));
-        votos[idOpcao] += 1;
+        votos[idOpcao] = (votos[idOpcao] || 0) + 1;
         localStorage.setItem('votos_live', JSON.stringify(votos));
         
         localStorage.setItem('jaVotouLive', 'true');
-        desativarBotoesVoto();
+        
         atualizarTela();
     }
 
-    // Fluxo do Menu de Sugestão
-    let sugestaoTemporaria = "";
+    // Sistema de sugestões
+    let textoTemporario = "";
 
     function proximoPasso() {
-        let sugestao = document.getElementById('input-sugestao').value;
-        if(sugestao.trim() === "") {
-            alert("Digite uma sugestão primeiro!");
-            return;
-        }
-        sugestaoTemporaria = sugestao;
+        let txt = document.getElementById('input-sugestao').value;
+        if (!txt.trim()) { alert("Escreva sua ideia!"); return; }
+        textoTemporario = txt;
         document.getElementById('passo-sugestao').classList.add('escondido');
         document.getElementById('passo-nome').classList.remove('escondido');
     }
 
     function enviarSugestao() {
         let nome = document.getElementById('input-nome').value;
-        if(nome.trim() === "") {
-            alert("Digite seu nome!");
-            return;
-        }
+        if (!nome.trim()) { alert("Digite seu nome!"); return; }
 
         const lista = JSON.parse(localStorage.getItem('sugestoes_live'));
-        lista.push({ usuario: nome, texto: sugestaoTemporaria });
+        lista.push({ usuario: nome, texto: textoTemporario });
         localStorage.setItem('sugestoes_live', JSON.stringify(lista));
 
-        alert("Obrigado! Sua sugestão foi enviada.");
+        alert("Sugestão enviada com sucesso!");
         document.getElementById('input-sugestao').value = "";
         document.getElementById('input-nome').value = "";
         document.getElementById('passo-nome').classList.add('escondido');
@@ -238,17 +243,15 @@
         atualizarTela();
     }
 
-    // Admin
+    // Painel Admin
     function fazerLogin() {
-        let usuarioInput = prompt("Digite seu usuário:");
-        let senhaInput = prompt("Digite sua senha:");
-
-        if(usuarioInput === "luffysdrk" && senhaInput === "deussssssss8") {
+        let user = prompt("Usuário:");
+        let pass = prompt("Senha:");
+        if (user === "luffysdrk" && pass === "deussssssss8") {
             localStorage.setItem('logadoLive', 'true');
             mostrarPainelAdmin();
-            alert("Bem-vindo ao Painel, luffysdrk!");
         } else {
-            alert("Usuário ou senha incorretos!");
+            alert("Incorreto!");
         }
     }
 
@@ -265,19 +268,11 @@
     }
 
     function zerarTudo() {
-        if(confirm("Deseja zerar os votos e limpar as sugestões?")) {
+        if (confirm("Quer limpar todos os votos e mensagens para a próxima live?")) {
             localStorage.setItem('votos_live', JSON.stringify({ opcao1: 0, opcao2: 0, opcao3: 0, opcao4: 0 }));
             localStorage.setItem('sugestoes_live', JSON.stringify([]));
             localStorage.removeItem('jaVotouLive');
-            
-            // Reativa botões na tela atual se necessário
-            for (let i = 1; i <= 4; i++) {
-                document.getElementById('btn-opcao' + i).disabled = false;
-            }
-            document.getElementById('msg-ja-votou').classList.add('escondido');
-
             atualizarTela();
-            alert("Dados limpos com sucesso!");
         }
     }
 </script>
