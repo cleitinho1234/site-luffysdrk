@@ -33,7 +33,12 @@
             cursor: pointer;
             transition: 0.2s;
         }
-        .btn-opcao:hover { background: #00e676; color: black; }
+        .btn-opcao:hover:not(:disabled) { background: #00e676; color: black; }
+        .btn-opcao:disabled {
+            border-color: #444;
+            color: #888;
+            cursor: not-allowed;
+        }
         .contador { font-weight: bold; color: #00e676; margin-top: 5px; }
         input[type="text"] {
             width: 80%;
@@ -52,7 +57,6 @@
             cursor: pointer;
             font-weight: bold;
         }
-        /* Área Restrita */
         #area-restrita {
             margin-top: 30px;
             padding: 20px;
@@ -63,45 +67,57 @@
             padding: 15px;
             border-radius: 8px;
             text-align: left;
+            max-height: 250px;
+            overflow-y: auto;
         }
         .escondido { display: none; }
+        .voto-sucesso { color: #ffd700; font-size: 14px; margin-top: 5px; }
     </style>
+
+    <!-- Scripts do Firebase necessários para conectar o banco de dados -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
 
 <div class="container">
     <h1>Qual o conteúdo da Live de hoje?</h1>
-    <p>Vote na sua opção favorita ou sugira algo abaixo!</p>
+    <p>Vote na sua opção favorita (Apenas 1 voto por pessoa)!</p>
 
-    <!-- Opções de Voto -->
+    <!-- Opções Atualizadas de Voto -->
     <div>
-        <button class="btn-opcao" onclick="votar('opcao1')">Caçar Frutas / Spawnar Boss</button>
+        <button class="btn-opcao" id="btn-opcao1" onclick="votar('opcao1')">Fazer Trial</button>
         <div class="contador">Votos: <span id="votos-opcao1">0</span></div>
     </div>
     
     <div>
-        <button class="btn-opcao" onclick="votar('opcao2')">PvP com Seguidores</button>
+        <button class="btn-opcao" id="btn-opcao2" onclick="votar('opcao2')">Ir Leviatã</button>
         <div class="contador">Votos: <span id="votos-opcao2">0</span></div>
     </div>
 
     <div>
-        <button class="btn-opcao" onclick="votar('opcao3')">Ajudando em Raids</button>
+        <button class="btn-opcao" id="btn-opcao3" onclick="votar('opcao3')">Raids</button>
         <div class="contador">Votos: <span id="votos-opcao3">0</span></div>
     </div>
+
+    <div>
+        <button class="btn-opcao" id="btn-opcao4" onclick="votar('opcao4')">Ajudar Iniciantes a subir de level</button>
+        <div class="contador">Votos: <span id="votos-opcao4">0</span></div>
+    </div>
+
+    <div id="msg-ja-votou" class="voto-sucesso escondido">Você já registrou seu voto de hoje! Obrigado.</div>
 
     <hr style="border: 1px solid #323238; margin: 30px 0;">
 
     <!-- Seção de Sugestão -->
     <h3>Tem outra ideia? Sugira aqui:</h3>
     
-    <!-- Passo 1: Digitar a sugestão -->
     <div id="passo-sugestao">
         <input type="text" id="input-sugestao" placeholder="Ex: Girar fruta e dar pro chat...">
         <br>
         <button class="btn-enviar" onclick="proximoPasso()">Avançar</button>
     </div>
 
-    <!-- Passo 2: Digitar o nome (Escondido no início) -->
     <div id="passo-nome" class="escondido">
         <p>Agora, digite seu nome do TikTok/Roblox:</p>
         <input type="text" id="input-nome" placeholder="Seu nome/Nick...">
@@ -109,32 +125,78 @@
         <button class="btn-enviar" onclick="enviarSugestao()">Enviar Sugestão</button>
     </div>
 
-    <!-- Botão de Login do Admin (Soca sumirá quando logado) -->
+    <!-- Botão de Login do Admin -->
     <div id="div-botao-login" style="margin-top: 40px;">
         <button style="background:transparent; color:#555; border:none; cursor:pointer;" onclick="fazerLogin()">Lugar Restrito (Admin)</button>
     </div>
 
-    <!-- Área Restrita (Só aparece para você após o login) -->
+    <!-- Área Restrita -->
     <div id="area-restrita" class="escondido">
         <h2 style="color: #ffd700;">Painel do luffysdrk</h2>
-        <p>Sugestões enviadas pelos fãs:</p>
+        <p>Sugestões enviadas pelos fãs (Salvas no Banco):</p>
         <div class="secao-admin" id="lista-sugestoes">
-            <!-- As sugestões vão aparecer aqui -->
-            <p style="color:#888;">Nenhuma sugestão enviada ainda nesta sessão.</p>
+            <p style="color:#888;">Carregando sugestões...</p>
         </div>
-        <button onclick="deslogar()" style="margin-top:10px; background:#ff4444; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer;">Sair do Painel</button>
+        <button onclick="zerarVotos()" style="margin-top:15px; background:#e67600; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; font-weight:bold; margin-right:10px;">Zerar Votos para Próxima Live</button>
+        <button onclick="deslogar()" style="margin-top:15px; background:#ff4444; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer;">Sair do Painel</button>
     </div>
 </div>
 
 <script>
-    // --- Sistema de Votos Locais ---
-    function votar(idOpcao) {
-        let elemento = document.getElementById('votos-' + idOpcao);
-        let votosAtuais = parseInt(elemento.innerText);
-        elemento.innerText = votosAtuais + 1;
+    // ==========================================
+    // COLE SUAS CONFIGURAÇÕES DO FIREBASE AQUI:
+    // ==========================================
+    const firebaseConfig = {
+        apiKey: "SUA_API_KEY_AQUI",
+        authDomain: "SEU_AUTH_DOMAIN_AQUI",
+        databaseURL: "SUA_DATABASE_URL_AQUI",
+        projectId: "SEU_PROJECT_ID_AQUI",
+        storageBucket: "SEU_STORAGE_BUCKET_AQUI",
+        messagingSenderId: "SEU_MESSAGING_SENDER_ID_AQUI",
+        appId: "SEU_APP_ID_AQUI"
+    };
+    
+    // Inicializa o Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // --- Controle de Voto Único (Usa o navegador da pessoa) ---
+    function verificarSeJaVotou() {
+        if (localStorage.getItem('jaVotou') === 'true') {
+            desativarBotoesVoto();
+        }
     }
 
-    // --- Sistema de Fluxo de Sugestão ---
+    function desativarBotoesVoto() {
+        for (let i = 1; i <= 4; i++) {
+            document.getElementById('btn-opcao' + i).disabled = true;
+        }
+        document.getElementById('msg-ja-votou').classList.remove('escondido');
+    }
+
+    // --- Escuta os votos em tempo real do banco de dados ---
+    db.ref('votos').on('value', (snapshot) => {
+        const dados = snapshot.val() || { opcao1: 0, opcao2: 0, opcao3: 0, opcao4: 0 };
+        document.getElementById('votos-opcao1').innerText = dados.opcao1 || 0;
+        document.getElementById('votos-opcao2').innerText = dados.opcao2 || 0;
+        document.getElementById('votos-opcao3').innerText = dados.opcao3 || 0;
+        document.getElementById('votos-opcao4').innerText = dados.opcao4 || 0;
+    });
+
+    // --- Função de Votar (Salva direto no Banco global) ---
+    function votar(idOpcao) {
+        if (localStorage.getItem('jaVotou') === 'true') return;
+
+        let refVoto = db.ref('votos/' + idOpcao);
+        refVoto.transaction((votosAtuais) => {
+            return (votosAtuais || 0) + 1;
+        }).then(() => {
+            localStorage.setItem('jaVotou', 'true');
+            desativarBotoesVoto();
+        });
+    }
+
+    // --- Fluxo de Sugestão ---
     let sugestaoTemporaria = "";
 
     function proximoPasso() {
@@ -155,28 +217,47 @@
             return;
         }
 
-        // Salva na lista (visível apenas na sessão atual do admin)
-        adicionarSugestaoAoPainel(nome, sugestaoTemporaria);
-
-        alert("Obrigado! Sua sugestão foi enviada para o luffysdrk.");
-        
-        // Reseta o formulário
-        document.getElementById('input-sugestao').value = "";
-        document.getElementById('input-nome').value = "";
-        document.getElementById('passo-nome').classList.add('escondido');
-        document.getElementById('passo-sugestao').classList.remove('escondido');
+        // Salva de forma permanente no banco de dados na pasta 'sugestoes'
+        db.ref('sugestoes').push({
+            usuario: nome,
+            texto: sugestaoTemporaria,
+            timestamp: Date.now()
+        }).then(() => {
+            alert("Obrigado! Sua sugestão foi enviada para o luffysdrk.");
+            
+            // Reseta os campos
+            document.getElementById('input-sugestao').value = "";
+            document.getElementById('input-nome').value = "";
+            document.getElementById('passo-nome').classList.add('escondido');
+            document.getElementById('passo-sugestao').classList.remove('escondido');
+        });
     }
 
-    function adicionarSugestaoAoPainel(nome, texto) {
+    // --- Puxa as sugestões salvando na área restrita em tempo real ---
+    db.ref('sugestoes').on('value', (snapshot) => {
         let lista = document.getElementById('lista-sugestoes');
-        if(lista.innerHTML.includes("Nenhuma sugestão enviada")) {
-            lista.innerHTML = "";
+        lista.innerHTML = "";
+        
+        if(!snapshot.exists()) {
+            lista.innerHTML = '<p style="color:#888;">Nenhuma sugestão enviada ainda.</p>';
+            return;
         }
-        lista.innerHTML += `<p><strong>${nome}:</strong> ${texto}</p>`;
+
+        snapshot.forEach((childSnapshot) => {
+            const dados = childSnapshot.val();
+            lista.innerHTML = `<p><strong>${dados.usuario}:</strong> ${dados.texto}</p>` + lista.innerHTML; 
+        });
+    });
+
+    // --- Botão Exclusivo do Admin para Limpar os Votos da Live anterior ---
+    function zerarVotos() {
+        if(confirm("Tem certeza que quer zerar a votação para começar uma nova live?")) {
+            db.ref('votos').set({ opcao1: 0, opcao2: 0, opcao3: 0, opcao4: 0 });
+            alert("Votação zerada!");
+        }
     }
 
-    // --- Sistema de Login do Admin (luffysdrk) ---
-    // Verifica se você já estava logado antes
+    // --- Sistema de Login Permanente do Admin ---
     if(localStorage.getItem('logado') === 'true') {
         mostrarPainelAdmin();
     }
@@ -185,7 +266,6 @@
         let usuarioInput = prompt("Digite seu usuário:");
         let senhaInput = prompt("Digite sua senha:");
 
-        // ATENÇÃO: Seus dados solicitados estão aqui.
         if(usuarioInput === "luffysdrk" && senhaInput === "deussssssss8") {
             localStorage.setItem('logado', 'true');
             mostrarPainelAdmin();
@@ -197,7 +277,7 @@
 
     function mostrarPainelAdmin() {
         document.getElementById('area-restrita').classList.remove('escondido');
-        document.getElementById('div-botao-login').classList.add('escondido'); // Esconde o botão para os outros
+        document.getElementById('div-botao-login').classList.add('escondido');
     }
 
     function deslogar() {
@@ -205,6 +285,9 @@
         document.getElementById('area-restrita').classList.add('escondido');
         document.getElementById('div-botao-login').classList.remove('escondido');
     }
+
+    // Executa ao carregar a página
+    verificarSeJaVotou();
 </script>
 
 </body>
