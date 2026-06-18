@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live do luffysdrk - Blox Fruits</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -20,7 +21,6 @@
         .container {
             max-width: 600px;
             margin: 40px auto;
-            /* Painel bem limpo, transparente e sem nenhum embaçado */
             background: rgba(18, 18, 20, 0.4);
             padding: 30px;
             border-radius: 16px;
@@ -99,7 +99,6 @@
     <h1>Qual o conteúdo da Live de hoje?</h1>
     <p style="text-shadow: 0 2px 4px rgba(0,0,0,1); font-weight: bold;">Vote na sua opção favorita (Apenas 1 voto por pessoa)!</p>
 
-    <!-- Opções de Voto -->
     <div>
         <button class="btn-opcao" id="btn-opcao1" onclick="votar('opcao1')">Fazer Trial</button>
         <div class="contador">Votos: <span id="votos-opcao1">0</span></div>
@@ -124,7 +123,6 @@
 
     <hr style="border: 1px solid rgba(0, 230, 118, 0.3); margin: 30px 0;">
 
-    <!-- Seção de Sugestão -->
     <h3 style="text-shadow: 0 2px 4px rgba(0,0,0,1);">Tem outra ideia? Sugira aqui:</h3>
     
     <div id="passo-sugestao">
@@ -140,12 +138,10 @@
         <button class="btn-enviar" onclick="enviarSugestao()">Enviar Sugestão</button>
     </div>
 
-    <!-- Botão Secreto de Admin -->
     <div id="div-botao-login" style="margin-top: 40px;">
         <button style="background:transparent; color:rgba(255,255,255,0.4); border:none; cursor:pointer;" onclick="fazerLogin()">Painel Restrito</button>
     </div>
 
-    <!-- Área do Admin -->
     <div id="area-restrita" class="escondido">
         <h2 style="color: #ffd700;">Painel de Controle</h2>
         <p>Sugestões dos Fãs:</p>
@@ -157,35 +153,45 @@
 </div>
 
 <script>
-    try {
-        const teste = localStorage.getItem('votos_live');
-        if (teste && (!teste.includes('opcao1') || teste.includes('undefined'))) {
-            localStorage.clear();
-        }
-    } catch(e) { localStorage.clear(); }
+    // Altere a URL abaixo para a URL do seu backend do Render quando fizer o deploy dele!
+    const socket = io("https://seu-backend-no-render.onrender.com");
 
-    if (!localStorage.getItem('votos_live')) {
-        localStorage.setItem('votos_live', JSON.stringify({ opcao1: 0, opcao2: 0, opcao3: 0, opcao4: 0 }));
-    }
+    // O localStorage agora serve APENAS para lembrar se ESTE navegador já votou
     if (!localStorage.getItem('sugestoes_live')) {
         localStorage.setItem('sugestoes_live', JSON.stringify([]));
     }
 
     window.addEventListener('load', () => {
-        atualizarTela();
         if (localStorage.getItem('logadoLive') === 'true') {
             mostrarPainelAdmin();
         }
     });
 
-    function atualizarTela() {
-        const votos = JSON.parse(localStorage.getItem('votos_live'));
-        
+    // Recebe os votos atualizados do servidor de forma global para todos os usuários
+    socket.on('atualizarVotos', (votos) => {
         document.getElementById('votos-opcao1').innerText = votos.opcao1 || 0;
         document.getElementById('votos-opcao2').innerText = votos.opcao2 || 0;
         document.getElementById('votos-opcao3').innerText = votos.opcao3 || 0;
         document.getElementById('votos-opcao4').innerText = votos.opcao4 || 0;
+        
+        verificarBloqueioBotoes();
+    });
 
+    // Recebe a lista de sugestões global atualizada pelo servidor
+    socket.on('atualizarSugestoes', (lista) => {
+        let divLista = document.getElementById('lista-sugestoes');
+        divLista.innerHTML = "";
+        
+        if (!lista || lista.length === 0) {
+            divLista.innerHTML = '<p style="color:#888;">Nenhuma sugestão enviada ainda.</p>';
+            return;
+        }
+        lista.forEach(item => {
+            divLista.innerHTML = `<p style="border-bottom: 1px solid #29292e; padding-bottom: 5px;"><strong>${item.usuario}:</strong> ${item.texto}</p>` + divLista.innerHTML;
+        });
+    });
+
+    function verificarBloqueioBotoes() {
         if (localStorage.getItem('jaVotouLive') === 'true') {
             for (let i = 1; i <= 4; i++) {
                 document.getElementById('btn-opcao' + i).disabled = true;
@@ -197,29 +203,17 @@
             }
             document.getElementById('msg-ja-votou').classList.add('escondido');
         }
-
-        const lista = JSON.parse(localStorage.getItem('sugestoes_live'));
-        let divLista = document.getElementById('lista-sugestoes');
-        divLista.innerHTML = "";
-        
-        if (!lista || lista.length === 0) {
-            divLista.innerHTML = '<p style="color:#888;">Nenhuma sugestão enviada ainda.</p>';
-            return;
-        }
-        lista.forEach(item => {
-            divLista.innerHTML = `<p style="border-bottom: 1px solid #29292e; padding-bottom: 5px;"><strong>${item.usuario}:</strong> ${item.texto}</p>` + divLista.innerHTML;
-        });
     }
 
     function votar(idOpcao) {
         if (localStorage.getItem('jaVotouLive') === 'true') return;
 
-        const votos = JSON.parse(localStorage.getItem('votos_live'));
-        votos[idOpcao] = (votos[idOpcao] || 0) + 1;
-        localStorage.setItem('votos_live', JSON.stringify(votos));
-        localStorage.setItem('jaVotouLive', 'true');
+        // Envia o voto direto para o servidor central
+        socket.emit('enviarVoto', idOpcao);
         
-        atualizarTela();
+        // Salva localmente apenas para este usuário não votar de novo
+        localStorage.setItem('jaVotouLive', 'true');
+        verificarBloqueioBotoes();
     }
 
     let textoTemporario = "";
@@ -236,17 +230,14 @@
         let nome = document.getElementById('input-nome').value;
         if (!nome.trim()) { alert("Digite seu nome!"); return; }
 
-        const lista = JSON.parse(localStorage.getItem('sugestoes_live'));
-        lista.push({ usuario: nome, texto: textoTemporario });
-        localStorage.setItem('sugestoes_live', JSON.stringify(lista));
+        // Envia a sugestão para o servidor central salvar
+        socket.emit('novaSugestao', { usuario: nome, texto: textoTemporario });
 
         alert("Sugestão enviada com sucesso!");
         document.getElementById('input-sugestao').value = "";
         document.getElementById('input-nome').value = "";
         document.getElementById('passo-nome').classList.add('escondido');
         document.getElementById('passo-sugestao').classList.remove('escondido');
-        
-        atualizarTela();
     }
 
     function fazerLogin() {
@@ -263,7 +254,6 @@
     function mostrarPainelAdmin() {
         document.getElementById('area-restrita').classList.remove('escondido');
         document.getElementById('div-botao-login').classList.add('escondido');
-        atualizarTela();
     }
 
     function deslogar() {
@@ -273,11 +263,11 @@
     }
 
     function zerarTudo() {
-        if (confirm("Quer limpar todos os votos e mensagens para a próxima live?")) {
-            localStorage.setItem('votos_live', JSON.stringify({ opcao1: 0, opcao2: 0, opcao3: 0, opcao4: 0 }));
-            localStorage.setItem('sugestoes_live', JSON.stringify([]));
+        if (confirm("Quer limpar todos os votos e mensagens do servidor para a próxima live?")) {
+            // Avisa o servidor para limpar a base de dados central
+            socket.emit('resetarServidor');
             localStorage.removeItem('jaVotouLive');
-            atualizarTela();
+            verificarBloqueioBotoes();
         }
     }
 </script>
