@@ -77,8 +77,8 @@
         .voto-sucesso { color: #ffd700; font-size: 14px; margin-top: 5px; }
     </style>
 
-    <!-- Importa o script do Socket.io do seu próprio servidor Render -->
-    <script src="/socket.io/socket.io.js"></script>
+    <!-- Importa o script do Socket.io de um CDN confiável para evitar caminhos relativos quebrados -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
 
@@ -145,8 +145,12 @@
 </div>
 
 <script>
-    // Conecta automaticamente na instância do Socket io do servidor
-    const socket = io();
+    // ⚠️ COLOQUE AQUI A URL COMPLETA DO SEU WEB SERVICE DO RENDER (BACKEND)
+    // Exemplo: "https://minizap-backend.onrender.com"
+    const URL_BACKEND = "https://SEU-BACKEND-AQUI.onrender.com"; 
+
+    // Conecta apontando diretamente para o endereço do seu backend rodando Socket.io
+    const socket = io(URL_BACKEND);
 
     // Controle Local de Voto Único
     function verificarSeJaVotou() {
@@ -170,12 +174,12 @@
         document.getElementById('votos-opcao4').innerText = dados.opcao4 || 0;
     }
 
-    // Carregamento Inicial carregando dados das Rotas da API Express do Mongo
+    // Carregamento Inicial buscando da API Express conectada ao MongoDB
     window.addEventListener('load', async () => {
         verificarSeJaVotou();
         
         try {
-            const resVotos = await fetch('/api/live/votos');
+            const resVotos = await fetch(`${URL_BACKEND}/api/live/votos`);
             const dadosVotos = await resVotos.json();
             atualizarContadoresNaTela(dadosVotos);
         } catch (err) {
@@ -188,12 +192,12 @@
         }
     });
 
-    // Ouvinte em tempo real via Socket.io para quando qualquer usuário computar um voto
+    // Ouvinte em tempo real para mudanças globais nos votos
     socket.on('atualizarVotosGlobais', (dados) => {
         atualizarContadoresNaTela(dados);
     });
 
-    // Ouvinte em tempo real para o painel administrativo receber sugestões novas instantaneamente
+    // Ouvinte em tempo real para receber novas sugestões no painel administrativo
     socket.on('novaSugestaoAdmin', (dados) => {
         if(localStorage.getItem('logadoLive') === 'true') {
             adicionarSugestaoNaTela(dados.usuario, dados.texto);
@@ -204,12 +208,12 @@
         document.getElementById('lista-sugestoes').innerHTML = '<p style="color:#888;">Nenhuma sugestão enviada ainda.</p>';
     });
 
-    // Função de Computar Voto via Requisição POST da API
+    // Função para registrar o Voto via requisição HTTP POST para o Backend
     async function votar(idOpcao) {
         if (localStorage.getItem('jaVotouLive') === 'true') return;
 
         try {
-            const res = await fetch('/api/live/votar', {
+            const res = await fetch(`${URL_BACKEND}/api/live/votar`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ opcaoId: idOpcao })
@@ -248,7 +252,7 @@
         }
 
         try {
-            const res = await fetch('/api/live/sugerir', {
+            const res = await fetch(`${URL_BACKEND}/api/live/sugerir`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ usuario: nome, texto: sugestaoTemporaria })
@@ -268,10 +272,10 @@
         }
     }
 
-    // Carregar Lista de Sugestões por requisição ao acessar o Painel Admin
+    // Carrega a lista de sugestões salvas no MongoDB
     async function carregarSugestoesDoBanco() {
         try {
-            const res = await fetch('/api/live/sugestoes');
+            const res = await fetch(`${URL_BACKEND}/api/live/sugestoes`);
             const lista = await res.json();
             let divLista = document.getElementById('lista-sugestoes');
             divLista.innerHTML = "";
@@ -294,11 +298,11 @@
         divLista.innerHTML = `<p><strong>${usuario}:</strong> ${texto}</p>` + divLista.innerHTML;
     }
 
-    // Função Administrativa para Limpar/Zerar Dados no MongoDB
+    // Função Administrativa para limpar dados no Backend
     async function zerarVotos() {
         if(confirm("Tem certeza que quer zerar a votação e limpar as mensagens para começar uma nova live?")) {
             try {
-                const res = await fetch('/api/live/resetar', { method: 'POST' });
+                const res = await fetch(`${URL_BACKEND}/api/live/resetar`, { method: 'POST' });
                 if(res.ok) {
                     alert("Banco de dados da live limpo com sucesso!");
                 }
