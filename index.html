@@ -20,18 +20,16 @@
         .container {
             max-width: 600px;
             margin: 40px auto;
-            /* Efeito de Vidro Transparente Profissional */
-            background: rgba(18, 18, 20, 0.75);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            /* Painel bem limpo, transparente e sem nenhum embaçado */
+            background: rgba(18, 18, 20, 0.4);
             padding: 30px;
             border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(0, 230, 118, 0.3);
         }
-        h1 { color: #00e676; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+        h1 { color: #00e676; text-shadow: 0 2px 8px rgba(0,0,0,0.9); }
         .btn-opcao {
-            background: rgba(41, 41, 46, 0.8);
+            background: rgba(26, 26, 30, 0.6);
             color: white;
             border: 2px solid #00e676;
             padding: 15px;
@@ -42,26 +40,27 @@
             cursor: pointer;
             transition: 0.2s;
             font-weight: bold;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            text-shadow: 0 1px 4px rgba(0,0,0,0.8);
         }
         .btn-opcao:hover:not(:disabled) { 
             background: #00e676; 
             color: black;
-            box-shadow: 0 0 15px rgba(0, 230, 118, 0.4);
+            box-shadow: 0 0 15px rgba(0, 230, 118, 0.6);
+            text-shadow: none;
         }
         .btn-opcao:disabled {
             border-color: #555;
             color: #888;
             cursor: not-allowed;
-            background: rgba(26, 26, 30, 0.9);
+            background: rgba(26, 26, 30, 0.8);
         }
-        .contador { font-weight: bold; color: #00e676; margin-top: 5px; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+        .contador { font-weight: bold; color: #00e676; margin-top: 5px; text-shadow: 0 2px 4px rgba(0,0,0,1); }
         input[type="text"] {
             width: 80%;
             padding: 12px;
             margin: 10px 0;
             border-radius: 6px;
-            background: rgba(18, 18, 20, 0.9);
+            background: rgba(18, 18, 20, 0.8);
             color: white;
             border: 1px solid #00e676;
             font-size: 16px;
@@ -75,15 +74,15 @@
             cursor: pointer;
             font-weight: bold;
             font-size: 16px;
-            box-shadow: 0 4px 10px rgba(0, 230, 118, 0.2);
+            box-shadow: 0 4px 10px rgba(0, 230, 118, 0.4);
         }
         #area-restrita {
             margin-top: 30px;
             padding: 20px;
-            border-top: 2px dashed rgba(255,255,255,0.2);
+            border-top: 2px dashed rgba(0, 230, 118, 0.4);
         }
         .secao-admin {
-            background: rgba(18, 18, 20, 0.9);
+            background: rgba(18, 18, 20, 0.8);
             padding: 15px;
             border-radius: 8px;
             text-align: left;
@@ -91,14 +90,14 @@
             overflow-y: auto;
         }
         .escondido { display: none; }
-        .voto-sucesso { color: #ffd700; font-size: 16px; margin-top: 15px; font-weight: bold; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+        .voto-sucesso { color: #ffd700; font-size: 16px; margin-top: 15px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,1); }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>Qual o conteúdo da Live de hoje?</h1>
-    <p style="text-shadow: 0 1px 2px rgba(0,0,0,0.5);">Vote na sua opção favorita (Apenas 1 voto por pessoa)!</p>
+    <p style="text-shadow: 0 2px 4px rgba(0,0,0,1); font-weight: bold;">Vote na sua opção favorita (Apenas 1 voto por pessoa)!</p>
 
     <!-- Opções de Voto -->
     <div>
@@ -123,10 +122,10 @@
 
     <div id="msg-ja-votou" class="voto-sucesso escondido">Sua opção foi registrada com sucesso!</div>
 
-    <hr style="border: 1px solid rgba(255,255,255,0.1); margin: 30px 0;">
+    <hr style="border: 1px solid rgba(0, 230, 118, 0.3); margin: 30px 0;">
 
     <!-- Seção de Sugestão -->
-    <h3>Tem outra ideia? Sugira aqui:</h3>
+    <h3 style="text-shadow: 0 2px 4px rgba(0,0,0,1);">Tem outra ideia? Sugira aqui:</h3>
     
     <div id="passo-sugestao">
         <input type="text" id="input-sugestao" placeholder="Ex: Girar fruta e dar pro chat...">
@@ -135,7 +134,7 @@
     </div>
 
     <div id="passo-nome" class="escondido">
-        <p>Agora, digite seu nome do TikTok/Roblox:</p>
+        <p style="text-shadow: 0 2px 4px rgba(0,0,0,1);">Agora, digite seu nome do TikTok/Roblox:</p>
         <input type="text" id="input-nome" placeholder="Seu nome/Nick...">
         <br><br>
         <button class="btn-enviar" onclick="enviarSugestao()">Enviar Sugestão</button>
@@ -143,7 +142,7 @@
 
     <!-- Botão Secreto de Admin -->
     <div id="div-botao-login" style="margin-top: 40px;">
-        <button style="background:transparent; color:rgba(255,255,255,0.2); border:none; cursor:pointer;" onclick="fazerLogin()">Painel Restrito</button>
+        <button style="background:transparent; color:rgba(255,255,255,0.4); border:none; cursor:pointer;" onclick="fazerLogin()">Painel Restrito</button>
     </div>
 
     <!-- Área do Admin -->
