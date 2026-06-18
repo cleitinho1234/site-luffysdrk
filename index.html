@@ -74,7 +74,7 @@
         .voto-sucesso { color: #ffd700; font-size: 14px; margin-top: 5px; }
     </style>
 
-    <!-- Scripts do Firebase necessários para conectar o banco de dados -->
+    <!-- Scripts CDN do Firebase Corretos (Versao Compat v8 estável) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
@@ -84,7 +84,7 @@
     <h1>Qual o conteúdo da Live de hoje?</h1>
     <p>Vote na sua opção favorita (Apenas 1 voto por pessoa)!</p>
 
-    <!-- Opções Atualizadas de Voto -->
+    <!-- Opções de Voto -->
     <div>
         <button class="btn-opcao" id="btn-opcao1" onclick="votar('opcao1')">Fazer Trial</button>
         <div class="contador">Votos: <span id="votos-opcao1">0</span></div>
@@ -143,9 +143,7 @@
 </div>
 
 <script>
-    // ==========================================
-    // CONFIGURAÇÕES CONFIGURADAS COM SEU PROJETO:
-    // ==========================================
+    // Suas credenciais do Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyBjx1NKjsjtjzDSobVNr-oFYoCeM8Z0eYg",
         authDomain: "live-blox-fruits.firebaseapp.com",
@@ -160,7 +158,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // --- Controle de Voto Único (Usa o navegador da pessoa) ---
+    // Controle Local de Voto Único
     function verificarSeJaVotou() {
         if (localStorage.getItem('jaVotou') === 'true') {
             desativarBotoesVoto();
@@ -174,16 +172,19 @@
         document.getElementById('msg-ja-votou').classList.remove('escondido');
     }
 
-    // --- Escuta os votos em tempo real do banco de dados ---
+    // Ouvinte em tempo real para os Contadores de Voto
     db.ref('votos').on('value', (snapshot) => {
         const dados = snapshot.val() || { opcao1: 0, opcao2: 0, opcao3: 0, opcao4: 0 };
         document.getElementById('votos-opcao1').innerText = dados.opcao1 || 0;
         document.getElementById('votos-opcao2').innerText = dados.opcao2 || 0;
         document.getElementById('votos-opcao3').innerText = dados.opcao3 || 0;
         document.getElementById('votos-opcao4').innerText = dados.opcao4 || 0;
+    }, (error) => {
+        console.error("Erro ao ler votos: ", error);
+        alert("Erro de permissão ao ler dados. Verifique as Regras do Realtime Database!");
     });
 
-    // --- Função de Votar (Salva direto no Banco global) ---
+    // Função de Computar Voto
     function votar(idOpcao) {
         if (localStorage.getItem('jaVotou') === 'true') return;
 
@@ -193,10 +194,13 @@
         }).then(() => {
             localStorage.setItem('jaVotou', 'true');
             desativarBotoesVoto();
+        }).catch((error) => {
+            console.error("Erro ao votar: ", error);
+            alert("Não foi possível registrar seu voto. Verifique se o banco de dados está aberto nas regras.");
         });
     }
 
-    // --- Fluxo de Sugestão ---
+    // Fluxo do Menu de Sugestão
     let sugestaoTemporaria = "";
 
     function proximoPasso() {
@@ -217,23 +221,23 @@
             return;
         }
 
-        // Salva de forma permanente no banco de dados na pasta 'sugestoes'
         db.ref('sugestoes').push({
             usuario: nome,
             texto: sugestaoTemporaria,
             timestamp: Date.now()
         }).then(() => {
             alert("Obrigado! Sua sugestão foi enviada para o luffysdrk.");
-            
-            // Reseta os campos
             document.getElementById('input-sugestao').value = "";
             document.getElementById('input-nome').value = "";
             document.getElementById('passo-nome').classList.add('escondido');
             document.getElementById('passo-sugestao').classList.remove('escondido');
+        }).catch((error) => {
+            console.error("Erro ao enviar sugestão: ", error);
+            alert("Erro ao enviar! O Firebase bloqueou a gravação da mensagem.");
         });
     }
 
-    // --- Puxa as sugestões salvando na área restrita em tempo real ---
+    // Ouvinte em tempo real para carregar a Lista de Mensagens no Painel Admin
     db.ref('sugestoes').on('value', (snapshot) => {
         let lista = document.getElementById('lista-sugestoes');
         lista.innerHTML = "";
@@ -247,17 +251,22 @@
             const dados = childSnapshot.val();
             lista.innerHTML = `<p><strong>${dados.usuario}:</strong> ${dados.texto}</p>` + lista.innerHTML; 
         });
+    }, (error) => {
+        console.error("Erro nas sugestões: ", error);
     });
 
-    // --- Botão Exclusivo do Admin para Limpar os Votos da Live anterior ---
+    // Função Administrativa para Resetar Votações
     function zerarVotos() {
         if(confirm("Tem certeza que quer zerar a votação para começar uma nova live?")) {
-            db.ref('votos').set({ opcao1: 0, opcao2: 0, opcao3: 0, opcao4: 0 });
-            alert("Votação zerada!");
+            db.ref('votos').set({ opcao1: 0, opcao2: 0, opcao3: 0, opcao4: 0 }).then(() => {
+                alert("Votação zerada!");
+            }).catch((error) => {
+                alert("Erro ao zerar: " + error.message);
+            });
         }
     }
 
-    // --- Sistema de Login Permanente do Admin ---
+    // Login Administrativo
     if(localStorage.getItem('logado') === 'true') {
         mostrarPainelAdmin();
     }
@@ -269,7 +278,7 @@
         if(usuarioInput === "luffysdrk" && senhaInput === "deussssssss8") {
             localStorage.setItem('logado', 'true');
             mostrarPainelAdmin();
-            alert("Bem-vindo de volta, luffysdrk!");
+            alert("Bem-vindo ao Painel, luffysdrk!");
         } else {
             alert("Usuário ou senha incorretos!");
         }
@@ -286,7 +295,6 @@
         document.getElementById('div-botao-login').classList.remove('escondido');
     }
 
-    // Executa ao carregar a página
     verificarSeJaVotou();
 </script>
 
