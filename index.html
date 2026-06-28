@@ -2,60 +2,220 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Loja Blox Fruits - Entrega Automática</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LuffysDrk Store - Checkout Pix</title>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #0f0f1a; color: white; margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .container { max-width: 900px; width: 100%; display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 40px; }
-        .produto-info { background: #151526; padding: 20px; border-radius: 8px; border: 1px solid #2d2d44; }
+        .container { max-width: 950px; width: 100%; display: grid; grid-template-columns: 1.8fr 1.2fr; gap: 20px; margin-top: 20px; }
+        .produto-info, .step-box { background: #151526; padding: 20px; border-radius: 8px; border: 1px solid #2d2d44; }
         .produto-info h1 { color: #ffb703; font-size: 24px; margin-top: 0; }
-        .banner { width: 100%; border-radius: 8px; margin-bottom: 15px; background: #2d2d44; height: 300px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #aaa; }
-        .checkout-box { background: #1a1a30; padding: 20px; border-radius: 8px; border: 1px solid #ffb703; height: fit-content; text-align: center; }
-        .preco { font-size: 32px; color: #25d366; font-weight: bold; margin: 15px 0; }
-        input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #3d3d5c; background: #0f0f1a; color: white; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: #6f42c1; color: white; border: none; font-size: 18px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        .banner { width: 100%; border-radius: 8px; margin-bottom: 15px; background: #2d2d44; height: 180px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #aaa; font-size: 20px; }
+        .checkout-box { background: #1a1a30; padding: 20px; border-radius: 8px; border: 1px solid #ffb703; height: fit-content; text-align: center; position: sticky; top: 20px; }
+        .preco { font-size: 36px; color: #25d366; font-weight: bold; margin: 15px 0; }
+        label { display: block; text-align: left; margin: 10px 0 5px 0; font-size: 14px; color: #ffb703; font-weight: bold; }
+        select, input { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #3d3d5c; background: #0f0f1a; color: white; box-sizing: border-box; font-size: 14px; }
+        button { width: 100%; padding: 15px; background: #6f42c1; color: white; border: none; font-size: 18px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.2s; margin-top: 10px; }
         button:hover { background: #5a32a3; }
+        .hidden { display: none !important; }
+        .qr-box { background: white; padding: 15px; border-radius: 8px; display: inline-block; margin: 15px 0; }
+        .qr-box img { width: 200px; height: 200px; }
+        .copia-cola { background: #0f0f1a; padding: 10px; border-radius: 6px; font-size: 12px; word-break: break-all; border: 1px dashed #3d3d5c; color: #aaa; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="produto-info">
-        <div class="banner">FOTO DO SEU PRODUTO AQUI</div>
-        <h1>🎁 BLOX FRUITS - CONTAS BARATAS | TTK | V4 | KITSUNE</h1>
-        <p style="color: #b3b3cc;">Entrega automática após o pagamento.</p>
-        <hr style="border: 0.5px solid #2d2d44;">
-        <h3>Descrição do Produto</h3>
-        <p>✓ Level 1000-2800 Garantido<br>✓ Frutas Míticas no Inventário<br>✓ Acesso total e imediato</p>
+    <!-- LADO ESQUERDO: TELAS DO FLUXO -->
+    <div id="fluxo-telas">
+        <!-- Tela 1: Vitrine do Produto -->
+        <div id="tela-produto" class="produto-info">
+            <div class="banner">🏴‍☠️ LUFFYSDRK STORE 🏴‍☠️</div>
+            <h1>⚡ CONTAS BLOX FRUITS - ENTREGA AUTOMÁTICA</h1>
+            <p style="color: #b3b3cc;">Escolha o modelo desejado ao lado para iniciar o pagamento via PIX.</p>
+            <hr style="border: 0.5px solid #2d2d44; margin: 20px 0;">
+            <h3>Termos da Compra:</h3>
+            <p>✓ Liberação imediata dos dados após compensação automática do Pix.</p>
+        </div>
+
+        <!-- Tela 2: Tela de Pagamento / Gerador de Pix -->
+        <div id="tela-pagamento" class="step-box hidden">
+            <h2>💳 Finalizar Pagamento via PIX</h2>
+            <p>Escaneie o QR Code abaixo ou copie o código para pagar.</p>
+            
+            <div style="text-align: center;">
+                <div class="qr-box">
+                    <!-- Gerador de QR Code do Pix dinâmico -->
+                    <img id="pix-qr" src="" alt="QR Code PIX">
+                </div>
+                <div class="copia-cola" id="pix-codigo">Carregando código...</div>
+                <button style="background: #25d366; font-size: 14px; padding: 10px;" onclick="copiarPix()">Copiar Código Pix</button>
+            </div>
+            
+            <p style="text-align: center; color: #aaa; font-size: 14px; margin-top: 20px;">🔄 Aguardando detecção do pagamento...</p>
+        </div>
     </div>
 
-    <div class="checkout-box">
-        <div style="font-size: 14px; color: #aaa;">Preço do Produto</div>
-        <div class="preco">R$ 1,99</div>
+    <!-- LADO DIREITO: CARRINHO / CHECKOUT -->
+    <div class="checkout-box" id="caixa-checkout">
+        <div style="font-size: 14px; color: #aaa;">Total do Pedido</div>
+        <div class="preco" id="exibir-preco">R$ 11,00</div>
         
-        <input type="text" id="nome" placeholder="Seu Nome">
-        <input type="text" id="whatsapp" placeholder="Seu WhatsApp (com DDD)">
-        
-        <button onclick="comprar()">COMPRAR AGORA</button>
+        <div id="campos-compra">
+            <label>1. Selecione a Categoria:</label>
+            <select id="categoria" onchange="atualizarProdutos()">
+                <option value="1">⭐ 1. Contas Promocionais e Iniciais</option>
+                <option value="2">📦 2. Loot Boxes (Sorteio)</option>
+                <option value="3">🍎 3. Quantidade de Frutas Míticas</option>
+                <option value="4">🦊 4. Frutas Específicas no Inventário</option>
+                <option value="5">⚔️ 5. Armas e Itens Especiais</option>
+                <option value="6">👑 6. Contas com Raça V4</option>
+                <option value="7">🍩 7. Raça V4 (Full) + Dough V2</option>
+                <option value="8">🩸 8. Raça V4 (Full) + Sanguine Art</option>
+                <option value="9">🩸🍩 9. Combos Avançados</option>
+                <option value="10">🏆 10. Contas Godly</option>
+            </select>
+
+            <label>2. Selecione a Conta:</label>
+            <select id="produto" onchange="atualizarPreco()"></select>
+
+            <input type="text" id="cpf" placeholder="Seu CPF (Requerido para o PIX)">
+            <input type="text" id="nome" placeholder="Nome Completo">
+            
+            <button onclick="gerarCheckout()">GERAR PIX</button>
+        </div>
     </div>
 </div>
 
 <script>
-    function comprar() {
-        const nome = document.getElementById('nome').value;
-        const whats = document.getElementById('whatsapp').value;
+    const catalogo = {
+        "1": [
+            { desc: "🩸 LV2800 + GOD + SANGUINE ✨(PROMO)✨", preco: 11.00 },
+            { desc: "👊 LV2800 + GOD HUMAN + FRUTAS", preco: 6.00 },
+            { desc: "🍎 LV1000-2800 + 1~2 FRUTAS MÍTICA GARANTIDA", preco: 7.00 }
+        ],
+        "2": [
+            { desc: "🔥 LOOT BOX - LV2800 + GOD + (KITSUNE, TIGER OU YETI)", preco: 11.00 },
+            { desc: "👑 LOOT BOX - LV2800 + GOD + (DOUGH, RUMBLE OU BUDDHA)", preco: 8.00 }
+        ],
+        "3": [
+            { desc: "🍎 LV2800 + GOD + 1~2 FRUTAS MÍTICAS", preco: 7.00 },
+            { desc: "🍎 LV2800 + GOD + 2~4 FRUTAS MÍTICAS", preco: 9.00 },
+            { desc: "🍎 LV2800 + GOD + 4~6 FRUTAS MÍTICAS", preco: 14.00 },
+            { desc: "🍎 LV2800 + GOD + 6~8 FRUTAS MÍTICAS", preco: 23.00 }
+        ],
+        "4": [
+            { desc: "🦊 LV2800 + GOD + KITSUNE NO INVENTÁRIO", preco: 25.00 },
+            { desc: "🍩 LV2800 + GOD + DOUGH V2 (FULL)", preco: 12.00 },
+            { desc: "💉 LV2800 + GOD + CONTROL NO INVENTÁRIO", preco: 21.00 },
+            { desc: "🐯 LV2800 + GOD + TIGER NO INVENTÁRIO", preco: 10.00 },
+            { desc: "🗻 Lv2800 + GOD + YETI NO INVENTÁRIO", preco: 10.00 },
+            { desc: "🍩 LV2800 + GOD + DOUGH NO INVENTÁRIO", preco: 7.00 },
+            { desc: "🦖 LV2800 + GOD + TREX NO INVENTÁRIO", preco: 7.00 },
+            { desc: "🌌 LV2800 + GOD + GRAVITY NO INVENTÁRIO", preco: 7.00 },
+            { desc: "⚡ LV2800 + GOD + RUMBLE NO INVENTÁRIO", preco: 6.00 },
+            { desc: "🌀 LV2800 + GOD + PORTAL NO INVENTÁRIO", preco: 6.00 },
+            { desc: "🙏 LV2800 + GOD + BUDDHA NO INVENTÁRIO", preco: 5.00 },
+            { desc: "💀 LV2800 + GOD + PAIN NO INVENTÁRIO (2 em estoque)", preco: 1.79 }
+        ],
+        "5": [
+            { desc: "⚔️🎸 LV2800 + GOD + CDK + SG", preco: 11.00 },
+            { desc: "⚓ LV2800 + GOD + SHARK ANCHOR", preco: 8.00 },
+            { desc: "⚔️ LV2800 + TTK + GOD", preco: 9.00 },
+            { desc: "🩸⚔️🎸 LV2800 + GOD + CDK + SANGUINE + SG", preco: 14.00 }
+        ],
+        "6": [
+            { desc: "🎁⚔️🎸 LV2800 + CDK + SG + RAÇA V4 (TIER 1) + GOD", preco: 13.00 },
+            { desc: "🧑⚔️🎸 LV2800 + V4 HUMAN (FULL) + GOD + SG + CDK", preco: 15.00 },
+            { desc: "🐰⚔️🎸 LV2800 + V4 MINK (FULL) + GOD + SG + CDK", preco: 15.00 },
+            { desc: "🦈⚔️🎸 LV2800 + V4 SHARK (FULL) + GOD + SG + CDK", preco: 15.00 },
+            { desc: "😇⚔️🎸 LV2800 + V4 ANGEL (FULL) + GOD + SG + CDK", preco: 15.00 },
+            { desc: "😈⚔️🎸 LV2800 + V4 GHOUL (FULL) + GOD + SG + CDK", preco: 17.00 },
+            { desc: "🤖⚔️🎸 LV2800 + V4 CYBORG (FULL) + GOD + SG + CDK", preco: 17.00 },
+            { desc: "🐉⚔️ LV2800 + V4 DRACO (FULL) + GOD + CDK", preco: 21.00 }
+        ],
+        "7": [
+            { desc: "🦈⚔️🎸🍩 LV2800 + V4 SHARK (FULL) + GOD + CDK + SG + DOUGH V2", preco: 22.00 },
+            { desc: "😇⚔️🎸🍩 LV2800 + V4 ANGEL (FULL) + GOD + CDK + SG + DOUGH V2", preco: 22.00 },
+            { desc: "😈⚔️🎸🍩 LV2800 + V4 GHOUL (FULL) + GOD + CDK + SG + DOUGH V2", preco: 23.00 },
+            { desc: "🤖⚔️🎸🍩 LV2800 + V4 CYBORG (FULL) + GOD + CDK + SG + DOUGH V2", preco: 23.00 }
+        ],
+        "8": [
+            { desc: "🩸🧑⚔️🎸 LV2800 + V4 HUMAN (FULL) + GOD + CDK + SG", preco: 18.00 },
+            { desc: "🩸😇⚔️🎸 LV2800 + V4 ANGEL (FULL) + SANGUINE + GOD + CDK + SG", preco: 21.00 },
+            { desc: "🩸🦈⚔️🎸 LV2800 + V4 SHARK (FULL) + SANGUINE + GOD + CDK + SG", preco: 21.00 },
+            { desc: "🩸😈⚔️🎸 LV2800 + V4 GHOUL (FULL) + SANGUINE + GOD + CDK + SG", preco: 22.00 }
+        ],
+        "9": [
+            { desc: "🩸🍩🦈⚔️🎸 LV2800 + V4 SHARK (TIER 1) + SANGUINE + DOUGH V2 + GOD", preco: 20.00 },
+            { desc: "🩸🍩S😇⚔️🎸 LV2800 + V4 ANGEL (FULL) + SANGUINE + DOUGH V2 + GOD", preco: 25.00 }
+        ],
+        "10": [
+            { desc: "6️⃣⚔️🎸 LV2800 + 4 RAÇA V4 (FULL) + GOD + SG + CDK", preco: 29.00 },
+            { desc: "6️⃣⚔️🎸 LV2800 + 6 RAÇA V4 (FULL) + GOD + CDK", preco: 41.00 },
+            { desc: "7️⃣🩸⚔️🎸 LV2800 + 7 RAÇA V4 (FULL) + SANGUINE + GOD + CDK", preco: 61.00 }
+        ]
+    };
+
+    function atualizarProdutos() {
+        const catId = document.getElementById("categoria").value;
+        const prodSelect = document.getElementById("produto");
+        prodSelect.innerHTML = "";
         
-        if(!nome || !whats) {
-            alert("Preencha todos os campos!");
+        catalogo[catId].forEach((prod, index) => {
+            let opt = document.createElement("option");
+            opt.value = index;
+            opt.innerText = prod.desc;
+            prodSelect.appendChild(opt);
+        });
+        atualizarPreco();
+    }
+
+    function atualizarPreco() {
+        const catId = document.getElementById("categoria").value;
+        const prodIndex = document.getElementById("produto").value;
+        const produtoSelecionado = catalogo[catId][prodIndex];
+        document.getElementById("exibir-preco").innerText = "R$ " + produtoSelecionado.preco.toFixed(2).replace('.', ',');
+    }
+
+    async function gerarCheckout() {
+        const cpf = document.getElementById('cpf').value;
+        const nome = document.getElementById('nome').value;
+        const catId = document.getElementById("categoria").value;
+        const prodIndex = document.getElementById("produto").value;
+        const produto = catalogo[catId][prodIndex];
+
+        if (!cpf || !nome) {
+            alert("Preencha o Nome e o CPF para gerar o Pix de cobrança!");
             return;
         }
 
-        // Sistema direto e gratuito: Envia os dados da venda direto para o seu WhatsApp!
-        const mensagem = `Olá, quero comprar a Conta de Blox Fruits!\n\nNome: ${nome}\nWhatsApp: ${whats}`;
-        const urlZap = `https://api.whatsapp.com/send?phone=SEUNUMERO&text=${encodeURIComponent(mensagem)}`;
-        
-        window.open(urlZap, '_blank');
-    }
-</script>
+        // Transiciona as telas igual ao fluxo do carrinho do vídeo
+        document.getElementById('tela-produto').classList.add('hidden');
+        document.getElementById('tela-pagamento').classList.remove('hidden');
+        document.getElementById('campos-compra').classList.add('hidden');
 
+        // INTEGRAÇÃO COM MERCADO PAGO VIA SEU BACKEND OU PARCEIRO GERADOR DE PIX
+        // Para fins estáticos no GitHub Pages, geramos um Pix estático ou simulação via API externa:
+        try {
+            // Exemplo de payload que seu servidor receberia ou que consome gateway direto
+            // Simulando a string Copia e Cola gerada na hora para o cliente pagar
+            const chaveCopiaCola = "00020101021226830014br.gov.bcb.pix2561api.mercadopago.com/v1/payments/mocked-luffysdrk-id-9982348123";
+            
+            document.getElementById('pix-codigo').innerText = chaveCopiaCola;
+            // Gera a imagem do QR Code legível baseada no código pix
+            document.getElementById('pix-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(chaveCopiaCola)}`;
+        } catch (error) {
+            alert("Erro ao processar integração do Pix.");
+        }
+    }
+
+    function copiarPix() {
+        const texto = document.getElementById('pix-codigo').innerText;
+        navigator.clipboard.writeText(texto);
+        alert("Código Pix Copia e Cola copiado com sucesso!");
+    }
+
+    atualizarProdutos();
+</script>
 </body>
 </html>
